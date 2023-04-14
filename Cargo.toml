@@ -7,6 +7,7 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.70"
+chrono = "0.4.24"
 clap = { version = "4.2.2", features = ["derive"] }
 crossterm = { version = "0.26.1", features = ["event-stream", "serde", "bracketed-paste", "futures-core"] }
 nvim-rs = "0.5.0"
