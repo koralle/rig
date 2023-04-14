@@ -9,4 +9,5 @@ edition = "2021"
 anyhow = "1.0.70"
 clap = { version = "4.2.2", features = ["derive"] }
 crossterm = { version = "0.26.1", features = ["event-stream", "serde", "bracketed-paste", "futures-core"] }
+nvim-rs = "0.5.0"
 thiserror = "1.0.40"
