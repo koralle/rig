@@ -694,6 +694,7 @@ dependencies = [
  "once_cell",
  "regex",
  "thiserror",
+ "windows",
 ]
 
 [[package]]
