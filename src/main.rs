@@ -1,6 +1,7 @@
 mod cli;
 mod request;
 mod run;
+mod view_history;
 
 use anyhow::Result;
 use cli::command::SubCommand;
