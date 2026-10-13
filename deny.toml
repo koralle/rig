@@ -1,0 +1,78 @@
+# 依存を戻すときの注意 (今は依存が無いため ignore / exceptions はコメントアウト):
+# - git2: 0.21 未満は RUSTSEC-2024-0013 (libgit2 < 1.7.2 の脆弱性) と unsound 3 件
+#   (RUSTSEC-2026-0008 / 0183 / 0184) を踏む。0.17 系を使うなら ignore に理由付きで
+#   追加し、ローカルビルドに openssl + pkg-config が要る (cmake は不要)。
+# - nvim-rs: LGPL-3.0 なので crate 限定の例外が要る。Rust は静的リンクするため、
+#   バイナリを配布するなら LGPL-3.0 の再リンク要件を確認する (配布しない間は例外で許容)。
+#   futures の io-compat を必須で有効にするため tokio-io 0.1 (unmaintained /
+#   RUSTSEC-2026-0058) も必ず入る (上流に修正が無く安全なアップグレードも無い)。
+# - dirs 系 (config のパス解決に使う場合): dirs-sys -> option-ext が MPL-2.0 単独なので、
+#   許可リストには入れずこのクレート限定の例外を検討する。
+
+[advisories]
+# 既定値のままだと warn で CI が落ちないため、明示的に締める:
+# - yanked: 既定 warn。yank は取り下げ・差し替えの合図なのでエラーにする
+# - unsound: 既定 workspace (直接依存のみ)。transitive の未定義動作も踏むため all
+# - unused-ignored-advisory: 遭遇しなくなった ignore を残さない (解消したら消す運用の機械化)
+# なお 0.20.2 の ignore entry は id / reason のみで、expiry による期限切れ検知は未実装。
+# 期限は reason に書いて人間が再確認する
+yanked = "deny"
+unsound = "all"
+unused-ignored-advisory = "deny"
+ignore = [
+  # nvim-rs を戻すときに必要 (reason に再確認の時期を書いて定期に見直す):
+  # { id = "RUSTSEC-2026-0058", reason = "nvim-rs の必須依存 (futures io-compat) 経由。安全なアップグレードが存在しない (2026-10 時点、半年後に再確認)" },
+]
+
+[bans]
+multiple-versions = "deny"
+wildcards = "deny"
+highlight = "all"
+
+# [workspace.dependencies] の運用を強制する:
+# - duplicates: member が workspace = true を使わず直接宣言したらエラー
+# - unused: 誰も使っていない workspace 依存をエラー (cargo-machete では検出できない)
+[bans.workspace-dependencies]
+duplicates = "deny"
+unused = "deny"
+include-path-dependencies = true
+
+# build script / ネイティブ実行ファイルは明示的に許可したものだけ通す。
+# 依存を足して build script 持ちが入ったら、中身を確認してここに理由付きで追加する
+[bans.build]
+allow-build-scripts = []
+executables = "deny"
+
+# git2 の https / ssh を有効にすると openssl と libssh2 (native 依存) が要るため封じる
+[[bans.features]]
+crate = "git2"
+deny = ["https", "ssh", "vendored-openssl"]
+
+[licenses]
+confidence-threshold = 0.8
+# この allow は「受け入れる方針」の一覧なので、未使用のエントリがあっても正常。
+# warn にすると依存ゼロの今は毎回 8 件の警告が出て出力を読まなくなるため allow のまま
+unused-allowed-license = "allow"
+allow = [
+  "MIT",
+  "Apache-2.0",
+  "Apache-2.0 WITH LLVM-exception",
+  "BSD-2-Clause",
+  "BSD-3-Clause",
+  "ISC",
+  "Unicode-3.0",
+  "Zlib",
+]
+# コピーレフトは許可リストに入れず、特定のクレートだけ例外にする
+# (0.20 の公式キーは crate。name も受理されるが使わない)
+exceptions = [
+  # { allow = ["LGPL-3.0"], crate = "nvim-rs", version = "*" },
+]
+
+[licenses.private]
+# publish = false のクレートはライセンス未記載を許す
+ignore = true
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"

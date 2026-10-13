@@ -1,0 +1,13 @@
+# テストコードでは unwrap / expect / panic を許可する。
+# 本体は workspace lints で deny のまま (ここはテストだけを緩める設定)
+allow-unwrap-in-tests = true
+allow-expect-in-tests = true
+allow-panic-in-tests = true
+
+# ドメイン上の禁止事項。例外が必要になったら理由を書いて allow する
+disallowed-methods = [
+  # git 操作は libgit2 (git2) 経由に統一する
+  { path = "std::process::Command::new", reason = "外部の git 起動は libgit2 経由に統一する (必要になったら理由付きで許可する)" },
+  # 終了コードの制御は main に集める (Result を返して ? で抜ける)
+  { path = "std::process::exit", reason = "終了コードの制御は main に集める" },
+]

@@ -1,0 +1,35 @@
+name: Scheduled checks
+
+on:
+  schedule:
+    # 週次 (月曜 06:00 JST)。依存が変わらなくても増えるもの (新規 advisory / yanked)
+    # を検出するため、ci.yaml の deny とは別に定期実行する
+    - cron: "0 21 * * 0"
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+permissions:
+  contents: read
+
+jobs:
+  # ci.yaml の deny ジョブは依存の変更時にしか走らない。
+  # ツールの版数は mise.toml / ci.yaml と揃える。
+  deny:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: ./.github/actions/setup-rust-toolchain
+        with:
+          cache: false
+
+      - uses: taiki-e/install-action@3f74d7c16a4242f1c95561e98edc25d36adb4375 # v2.87.12
+        with:
+          tool: cargo-deny@0.20.2
+
+      - run: cargo deny --all-features --locked check

@@ -1,0 +1,292 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  # PR は最新の push だけ検証すればよいが、main への push はキャンセルしない
+  # (検証されないコミットを作らないため)
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  CARGO_TERM_COLOR: always
+
+permissions:
+  contents: read
+
+# 各ジョブの actions/checkout は persist-credentials: false で、github.token を
+# git の config に残さない (後続ステップや成果物に漏れないようにする)
+
+jobs:
+  # ドキュメントのみの変更で Rust のジョブを走らせないため、変更ファイルを判定する。
+  # 許可リスト方式だと新しい設定ファイル (clippy.toml など) が漏れて素通りするため、
+  # 「Markdown 以外は全部」という否定パターン方式にしている。
+  changes:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      rust: ${{ steps.filter.outputs.rust }}
+      deps: ${{ steps.filter.outputs.deps }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        id: filter
+        with:
+          # 否定パターン ('!**/*.md') を有効にするには some-with-excludes が必要。
+          # 既定の 'some' では '**' が常に一致して除外が効かない
+          predicate-quantifier: some-with-excludes
+          filters: |
+            rust:
+              - '**'
+              - '!**/*.md'
+            deps:
+              - '**/Cargo.toml'
+              - 'Cargo.lock'
+              - 'deny.toml'
+              - 'rust-toolchain.toml'
+              - '.cargo/**'
+              - '.github/**'
+
+  format:
+    needs: changes
+    if: needs.changes.outputs.rust == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: ./.github/actions/setup-rust-toolchain
+        with:
+          cache: false
+
+      - run: cargo fmt --all -- --check
+
+  clippy:
+    needs: changes
+    if: needs.changes.outputs.rust == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: ./.github/actions/setup-rust-toolchain
+
+      # --locked: Cargo.lock が更新されていない状態で CI が lock を書き換えて
+      # 成功してしまうのを防ぐ
+      - run: |
+          cargo clippy --locked --workspace --all-targets --all-features -- -D warnings
+
+  doc:
+    needs: changes
+    if: needs.changes.outputs.rust == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: ./.github/actions/setup-rust-toolchain
+
+      # 壊れた intra-doc link などは cargo test --doc では検出されないため、
+      # rustdoc 自体を回して警告をエラーにする
+      - name: cargo doc (rustdoc の警告をエラーにする)
+        env:
+          RUSTDOCFLAGS: -D warnings
+        run: |
+          cargo doc --locked --workspace --all-features \
+            --document-private-items --no-deps
+
+  # 設定ファイルの検査: workflow の構文 / 式 (actionlint)、YAML の作法 (yamllint)、
+  # ツールの版数の整合 (scripts/check-versions.sh)。
+  # ツールは mise.toml を唯一の出所にするため、mise 経由で入れて mise のタスクを叩く
+  config:
+    needs: changes
+    if: needs.changes.outputs.rust == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: jdx/mise-action@08ae2a091c038e1e05ec6f5115dc5c69d5a2a6b8 # v5.1.2
+        with:
+          # 全部入れると cargo バックエンドのツール導入 (rust + nextest + machete + deny)
+          # が走って数分かかるため、lint 用のツールだけ入れる
+          install_args: github:rhysd/actionlint pipx:yamllint
+
+      # auto_install を切らないと mise run が未導入のツールまで入れてしまう
+      # (mise-action が入れた actionlint / yamllint は PATH にある)
+      - name: mise run check-config
+        env:
+          MISE_AUTO_INSTALL: "false"
+        run: mise run check-config
+
+  deny:
+    needs: changes
+    if: needs.changes.outputs.deps == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: ./.github/actions/setup-rust-toolchain
+        with:
+          cache: false
+
+      - uses: taiki-e/install-action@3f74d7c16a4242f1c95561e98edc25d36adb4375 # v2.87.12
+        with:
+          tool: cargo-deny@0.20.2
+
+      # 依存が変わらなくても新規 advisory / yanked は増えるため、週次で
+      # scheduled-checks.yaml からも同じコマンドを実行する
+      - run: cargo deny --all-features --locked check
+
+  machete:
+    needs: changes
+    if: needs.changes.outputs.rust == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: ./.github/actions/setup-rust-toolchain
+        with:
+          cache: false
+
+      - uses: taiki-e/install-action@3f74d7c16a4242f1c95561e98edc25d36adb4375 # v2.87.12
+        with:
+          tool: cargo-machete@0.9.2
+
+      - run: cargo machete
+
+  test:
+    needs: changes
+    if: needs.changes.outputs.rust == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: ./.github/actions/setup-rust-toolchain
+
+      - uses: taiki-e/install-action@3f74d7c16a4242f1c95561e98edc25d36adb4375 # v2.87.12
+        with:
+          tool: nextest@0.9.144
+
+      # テストが 0 件の間は nextest が exit 4 で落ちるため pass 扱いにする
+      # (プロファイルは .config/nextest.toml: fail-fast なし / リトライ / ハング検出)
+      - run: cargo nextest run --locked --profile ci --workspace --all-features --no-tests=pass
+
+      # nextest は doctest を実行しないため個別に実行する
+      - run: cargo test --doc --locked --workspace --all-features
+
+  # macOS / Windows でもビルドとテストが通ることを見る。プラットフォーム依存の
+  # コードを書くツールなので、Linux だけでは検証にならない
+  platforms:
+    needs: changes
+    if: needs.changes.outputs.rust == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: ./.github/actions/setup-rust-toolchain
+
+      - uses: taiki-e/install-action@3f74d7c16a4242f1c95561e98edc25d36adb4375 # v2.87.12
+        with:
+          tool: nextest@0.9.144
+
+      - run: cargo nextest run --locked --profile ci --workspace --all-features --no-tests=pass
+
+  ci-gate:
+    name: CI Gate
+    if: ${{ always() }}
+    needs:
+      - changes
+      - format
+      - clippy
+      - doc
+      - config
+      - machete
+      - test
+      - platforms
+      - deny
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      CHANGES_RESULT: ${{ needs.changes.result }}
+      RUST_CHANGED: ${{ needs.changes.outputs.rust }}
+      DEPS_CHANGED: ${{ needs.changes.outputs.deps }}
+      FORMAT_RESULT: ${{ needs.format.result }}
+      CLIPPY_RESULT: ${{ needs.clippy.result }}
+      DOC_RESULT: ${{ needs.doc.result }}
+      CONFIG_RESULT: ${{ needs.config.result }}
+      MACHETE_RESULT: ${{ needs.machete.result }}
+      TEST_RESULT: ${{ needs.test.result }}
+      PLATFORMS_RESULT: ${{ needs.platforms.result }}
+      DENY_RESULT: ${{ needs.deny.result }}
+    steps:
+      - name: Verify CI results
+        shell: bash
+        run: |
+          # set -e は使わない (失敗を集めてから最後にまとめて落とす)
+          set -uo pipefail
+
+          if [[ "$CHANGES_RESULT" != "success" ]]; then
+            echo "::error::changes job did not succeed: $CHANGES_RESULT"
+            exit 1
+          fi
+
+          failed=0
+
+          check_success() {
+            local job="$1"
+            local result="$2"
+            if [[ "$result" != "success" ]]; then
+              echo "::error::$job was expected to succeed but finished with $result"
+              failed=1
+            fi
+          }
+
+          if [[ "$RUST_CHANGED" == "true" ]]; then
+            check_success format "$FORMAT_RESULT"
+            check_success clippy "$CLIPPY_RESULT"
+            check_success doc "$DOC_RESULT"
+            check_success config "$CONFIG_RESULT"
+            check_success machete "$MACHETE_RESULT"
+            check_success test "$TEST_RESULT"
+            check_success platforms "$PLATFORMS_RESULT"
+          fi
+
+          if [[ "$DEPS_CHANGED" == "true" ]]; then
+            check_success deny "$DENY_RESULT"
+          fi
+
+          exit "$failed"

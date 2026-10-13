@@ -1,29 +1,49 @@
-[package]
-name = "rig"
-version = "0.1.0"
-edition = "2021"
+[workspace]
+resolver = "3"
+members = ["crates/*"]
+# バイナリのクレートだけを既定にする (将来 xtask などを足しても cargo run / cargo build が
+# それを巻き込まないようにする)
+default-members = ["crates/rig"]
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[workspace.package]
+edition = "2024"
+rust-version = "1.99"
+license = "MIT"
 
-[dependencies]
-anyhow = "1.0.70"
-chrono = "0.4.24"
-clap = { version = "4.2.2", features = ["derive"] }
-crossterm = { version = "0.26.1", features = ["event-stream", "serde", "bracketed-paste", "futures-core"] }
-git2 = "0.17.1"
-nix = "0.26.2"
-nvim-rs = "0.5.0"
-once_cell = "1.17.1"
-regex = "1.7.3"
-thiserror = "1.0.40"
+# 依存は必要になった時点でここに追加する (追加時は deny.toml 冒頭の注意を確認)
+[workspace.dependencies]
 
-[dependencies.windows]
-version = "0.48"
-features = [
-    "Data_Xml_Dom",
-    "Win32_Foundation",
-    "Win32_Security",
-    "Win32_System_Threading",
-    "Win32_UI_WindowsAndMessaging",
-]
+[workspace.lints.rust]
+unsafe_op_in_unsafe_fn = "deny"
+# unsafe は書かせない (必要になったらここを変えて理由を残す)
+unsafe_code = "forbid"
+# missing_docs はここには入れない。workspace lints にすると結合テスト (tests/*.rs は
+# 別の crate root) にも crate ドキュメントを要求してしまうため、公開 API を持つ
+# ライブラリの crate root (crates/*/src/lib.rs) で deny する
+# lint グループは個別 lint と priority が衝突するため priority = -1 を付ける
+rust_2024_compatibility = { level = "deny", priority = -1 }
+unreachable_pub = "deny"
+elided_lifetimes_in_paths = "deny"
+let_underscore_drop = "deny"
 
+[workspace.lints.clippy]
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+todo = "deny"
+unimplemented = "deny"
+dbg_macro = "deny"
+unreachable = "deny"
+unwrap_in_result = "deny"
+# unsafe を許すことになった場合の最低線 (unsafe_code = forbid と二重に塞ぐ)
+undocumented_unsafe_blocks = "deny"
+# Neovim と stdio でやり取りするため、ライブラリから stdout に書かせない
+# (出力はバイナリの main.rs だけに集める。main.rs で allow している)
+print_stdout = "deny"
+
+# 配布バイナリ向けの設定。正しさ優先で桁あふれも release で検出する
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = true
+overflow-checks = true

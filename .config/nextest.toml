@@ -1,0 +1,9 @@
+# CI 用の nextest プロファイル (CI の test ジョブが --profile ci で使う)。
+# ローカルの既定プロファイルは fail-fast のままにしておく。
+[profile.ci]
+# 最初の失敗で打ち切らず、失敗したテストを全部報告する
+fail-fast = false
+# flaky をその場で吸収する (2 回まで再試行し、最終結果は失敗として報告する)
+retries = 2
+# ハングしたテストを強制終了する (30 秒 × 3 = 90 秒で打ち切り)
+slow-timeout = { period = "30s", terminate-after = 3 }

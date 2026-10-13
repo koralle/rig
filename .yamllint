@@ -1,0 +1,15 @@
+# pi-lens などが既定ルールで走らせるため、リポジトリの書き方に合わせて緩める
+extends: default
+
+rules:
+  # 先頭の `---` は書かない
+  document-start: disable
+  # GitHub Actions の `on:` を真偽値として指摘させない
+  truthy:
+    check-keys: false
+  # ` # v1.2.3` と 1 文字空けでコメントを書く
+  comments:
+    min-spaces-from-content: 1
+  # SHA ピンした uses 行が 80 桁を超える
+  line-length:
+    max: 100

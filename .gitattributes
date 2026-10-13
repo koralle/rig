@@ -1,0 +1,4 @@
+# 改行コードは LF に統一する。
+# Windows からの commit で CRLF が混入すると cargo fmt --all -- --check が
+# 全ファイルで差分を出すため、checkout / commit の両方向で LF に寄せる
+* text=auto eol=lf
