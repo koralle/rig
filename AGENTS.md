@@ -49,6 +49,10 @@ Rust を書くとき:
   yamllint / 版数整合)。CI は `mise run ci` と同等だが、`test` は CI 用プロファイル
   (`.config/nextest.toml` の `ci`) で、`platforms` (macOS / Windows の matrix) は
   CI 固有。
+- workflow の checkout は `persist-credentials: false` を付ける (トークンを後続の
+  ステップに残さない)。自前の composite action は `uses: ./...` で呼ぶ
+  (GitHub の `$/...` 構文は actionlint が未対応のため。詳細は
+  `.github/actions/setup-rust-toolchain/action.yaml` のコメント)。
 - CI は `.github/workflows/ci.yaml` (変更ファイルに応じた検証) と
   `.github/workflows/scheduled-checks.yaml` (cargo deny の週次実行)。ジョブは
   `mise.toml` のタスクと 1:1 に対応させる (ただし `platforms` は CI 固有)。

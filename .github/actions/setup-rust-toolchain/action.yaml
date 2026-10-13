@@ -1,6 +1,11 @@
 name: Setup Rust toolchain
 description: Install the Rust toolchain declared in rust-toolchain.toml
 
+# 呼び出し側は uses: ./.github/actions/setup-rust-toolchain を使う。
+# GitHub は 2026-07 に self-repository 構文 (uses: $/...) を推奨にしたが、
+# actionlint が未対応 (rhysd/actionlint#711) で、$/ にすると actionlint による
+# with: の入力検証も効かなくなるため、対応するまで ./ のままにする。
+
 inputs:
   cache:
     description: Cache Cargo registry and build artifacts

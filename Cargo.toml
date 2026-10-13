@@ -1,7 +1,9 @@
 [workspace]
 resolver = "3"
 members = ["crates/*"]
-default-members = ["crates/*"]
+# バイナリのクレートだけを既定にする (将来 xtask などを足しても cargo run / cargo build が
+# それを巻き込まないようにする)
+default-members = ["crates/rig"]
 
 [workspace.package]
 edition = "2024"
