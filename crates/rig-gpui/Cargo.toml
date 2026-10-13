@@ -1,0 +1,20 @@
+[package]
+name = "rig-gpui"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+# 誤って publish しないためのフタ (deny の private 扱いにも必要)
+publish = false
+
+[dependencies]
+# GPUI 本体は gpui_kit::* の再エクスポート経由で使う (gpui は直接依存しない)
+gpui-kit = { workspace = true }
+
+[dev-dependencies]
+# headless なテスト支援 (`#[gpui_kit::test]` と TestAppContext) は test-support でしか
+# 使えない。dev 依存なので通常のビルドには入らない (feature は test ビルドでだけ合流する)
+gpui-kit = { workspace = true, features = ["test-support"] }
+
+[lints]
+workspace = true

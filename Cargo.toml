@@ -1,8 +1,9 @@
 [workspace]
 resolver = "3"
 members = ["crates/*"]
-# バイナリのクレートだけを既定にする (将来 xtask などを足しても cargo run / cargo build が
-# それを巻き込まないようにする)
+# 既定は CLI (crates/rig) だけにする。GUI (crates/rig-gpui) は依存が重く、ウィンドウを
+# 出すにはデスクトップセッションが要るため、`-p rig-gpui` を明示したときだけビルドする
+# (xtask などを足したときも cargo run / cargo build が巻き込まないようにする)
 default-members = ["crates/rig"]
 
 [workspace.package]
@@ -12,6 +13,10 @@ license = "MIT"
 
 # 依存は必要になった時点でここに追加する (追加時は deny.toml 冒頭の注意を確認)
 [workspace.dependencies]
+# GPUI 本体は GPUI Kit が `gpui-pre-*` のスナップショットとして固定し、`gpui_kit::*` から
+# 再エクスポートする。gpui を別途ここに入れると GPUI が二重に入るため、gpui-kit だけを置く
+# (バージョンを上げるときは gpui-pre-* を個別に上書きしないこと)
+gpui-kit = "0.7.3"
 
 [workspace.lints.rust]
 unsafe_op_in_unsafe_fn = "deny"
