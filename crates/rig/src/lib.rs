@@ -1,18 +1,14 @@
-mod cli;
-mod exit_code;
-mod run;
+//! rig の CLI 定義とサブコマンドの実行。
+//!
+//! バイナリ (`src/main.rs`) はこのクレートを呼ぶだけの薄いラッパー。
+//! サブコマンドの実装が進んだら、ロジックをここから公開してテストから
+//! 使えるようにする。
 
-use anyhow::Result;
-use cli::command::SubCommand;
+pub mod cli;
+pub mod run;
 
-use clap::Parser;
-
-use std::process;
-
-use crate::cli::command::Cli;
+use crate::cli::command::{Cli, Main, SubCommand};
 use crate::run::Run;
-
-use self::cli::command::Main;
 
 impl Run for Cli {
     fn run(&self) -> anyhow::Result<()> {
@@ -30,18 +26,4 @@ impl Run for Cli {
             SubCommand::Status(cmd) => cmd.run(),
         }
     }
-}
-
-fn main() -> Result<()> {
-    match Cli::parse().run() {
-        Ok(_) => {
-            // TODO: handle exit code;
-            process::exit(0);
-        }
-        Err(err) => {
-            // TODO: handle exit code;
-            eprintln!("[rig error]: {:#}", err);
-            process::exit(1);
-        }
-    };
 }

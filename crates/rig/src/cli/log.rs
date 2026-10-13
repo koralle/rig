@@ -4,8 +4,8 @@ use crate::cli::command;
 
 use crate::run::Run;
 
-impl Run for command::RefLog {
+impl Run for command::Log {
     fn run(&self) -> Result<()> {
-        todo!("Implement command::RefLog::run()")
+        anyhow::bail!("command::Log::run() is not implemented yet")
     }
 }

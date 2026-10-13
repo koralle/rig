@@ -4,8 +4,8 @@ use crate::cli::command;
 
 use crate::run::Run;
 
-impl Run for command::Main {
+impl Run for command::Stash {
     fn run(&self) -> Result<()> {
-        todo!("Implement command::Main::run()")
+        anyhow::bail!("command::Stash::run() is not implemented yet")
     }
 }

@@ -65,3 +65,16 @@ pub struct Stash {}
 #[derive(Debug, Parser)]
 #[clap(author)]
 pub struct Status {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use clap::CommandFactory;
+
+    // clap の定義ミス (重複したサブコマンド名、矛盾した設定) をテストで落とす。
+    // サブコマンドを足したときに debug_assert が検証してくれる。
+    #[test]
+    fn cli_definition_is_valid() {
+        Cli::command().debug_assert();
+    }
+}

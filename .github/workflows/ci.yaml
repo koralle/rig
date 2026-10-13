@@ -1,0 +1,182 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+permissions:
+  contents: read
+
+jobs:
+  # 変更されたファイルに応じて後続のジョブを実行するか判定する。
+  # ドキュメントのみの変更で Rust の lint / test が走らないようにするのが目的。
+  changes:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      rust: ${{ steps.filter.outputs.rust }}
+      deps: ${{ steps.filter.outputs.deps }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # dorny/paths-filter v4.0.3
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d
+        id: filter
+        with:
+          filters: |
+            # Rust のビルド / lint / test に影響するファイル
+            rust:
+              - 'crates/**'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+              - 'rust-toolchain.toml'
+              - '.github/actions/**'
+              - '.github/workflows/ci.yaml'
+            # 依存クレートのポリシーチェック (cargo-deny) に影響するファイル
+            deps:
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+              - 'deny.toml'
+              - '.github/actions/**'
+              - '.github/workflows/ci.yaml'
+
+  format:
+    needs: changes
+    if: needs.changes.outputs.rust == 'true'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: ./.github/actions/setup-rust-toolchain
+        with:
+          cache: false
+
+      - run: cargo fmt --all -- --check
+
+  clippy:
+    needs: changes
+    if: needs.changes.outputs.rust == 'true'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: ./.github/actions/setup-rust-toolchain
+
+      - run: |
+          cargo clippy --workspace --all-targets --all-features -- -D warnings
+
+  deny:
+    needs: changes
+    if: needs.changes.outputs.deps == 'true'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: ./.github/actions/setup-rust-toolchain
+        with:
+          cache: false
+
+      # taiki-e/install-action v2.87.12
+      - uses: taiki-e/install-action@3f74d7c16a4242f1c95561e98edc25d36adb4375
+        with:
+          tool: cargo-deny@0.20.2
+
+      - run: cargo deny --all-features --locked check
+
+  machete:
+    needs: changes
+    if: needs.changes.outputs.rust == 'true'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: ./.github/actions/setup-rust-toolchain
+        with:
+          cache: false
+
+      # taiki-e/install-action v2.87.12
+      - uses: taiki-e/install-action@3f74d7c16a4242f1c95561e98edc25d36adb4375
+        with:
+          tool: cargo-machete@0.9.2
+
+      - run: cargo machete
+
+  test:
+    needs: changes
+    if: needs.changes.outputs.rust == 'true'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: ./.github/actions/setup-rust-toolchain
+
+      # taiki-e/install-action v2.87.12
+      - uses: taiki-e/install-action@3f74d7c16a4242f1c95561e98edc25d36adb4375
+        with:
+          tool: nextest@0.9.144
+
+      - run: cargo nextest run --workspace --all-features
+
+      # nextest は doctest を実行しないため個別に実行する
+      - run: cargo test --doc --workspace --all-features
+
+  ci-gate:
+    name: CI Gate
+    if: ${{ always() }}
+    needs:
+      - changes
+      - format
+      - clippy
+      - machete
+      - test
+      - deny
+    runs-on: ubuntu-24.04
+    env:
+      CHANGES_RESULT: ${{ needs.changes.result }}
+      RUST_CHANGED: ${{ needs.changes.outputs.rust }}
+      DEPS_CHANGED: ${{ needs.changes.outputs.deps }}
+      FORMAT_RESULT: ${{ needs.format.result }}
+      CLIPPY_RESULT: ${{ needs.clippy.result }}
+      MACHETE_RESULT: ${{ needs.machete.result }}
+      TEST_RESULT: ${{ needs.test.result }}
+      DENY_RESULT: ${{ needs.deny.result }}
+    steps:
+      - name: Verify CI results
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ "$CHANGES_RESULT" != "success" ]]; then
+            echo "::error::changes job did not succeed: $CHANGES_RESULT"
+            exit 1
+          fi
+
+          check_success() {
+            local job="$1"
+            local result="$2"
+            if [[ "$result" != "success" ]]; then
+              echo "::error::$job was expected to succeed but finished with $result"
+              return 1
+            fi
+          }
+
+          if [[ "$RUST_CHANGED" == "true" ]]; then
+            check_success format "$FORMAT_RESULT"
+            check_success clippy "$CLIPPY_RESULT"
+            check_success machete "$MACHETE_RESULT"
+            check_success test "$TEST_RESULT"
+          fi
+
+          if [[ "$DEPS_CHANGED" == "true" ]]; then
+            check_success deny "$DENY_RESULT"
+          fi

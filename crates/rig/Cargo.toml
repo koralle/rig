@@ -1,0 +1,40 @@
+[package]
+name = "rig"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+# 誤って crates.io へ publish しないためのフタ (deny.toml の [licenses.private] は
+# publish = false のクレートをライセンス未記載でも許可する)
+publish = false
+
+[dependencies]
+anyhow.workspace = true
+chrono.workspace = true
+clap.workspace = true
+crossterm.workspace = true
+git2.workspace = true
+nix.workspace = true
+nvim-rs.workspace = true
+once_cell.workspace = true
+regex.workspace = true
+thiserror.workspace = true
+windows.workspace = true
+
+[lints]
+workspace = true
+
+# CLI サブコマンドが未実装の間は、実装で使う予定の依存が「未使用」と判定される。
+# 実際に使い始めたらこのリストから外していく (検出力を落とさないため、常に
+# 必要最小限に保つ)。
+[package.metadata.cargo-machete]
+ignored = [
+  "chrono",
+  "crossterm",
+  "git2",
+  "nix",
+  "nvim-rs",
+  "once_cell",
+  "regex",
+  "thiserror",
+  "windows",
+]

@@ -4,8 +4,8 @@ use crate::cli::command;
 
 use crate::run::Run;
 
-impl Run for command::Show {
+impl Run for command::Blame {
     fn run(&self) -> Result<()> {
-        todo!("Implement command::Show::run()")
+        anyhow::bail!("command::Blame::run() is not implemented yet")
     }
 }

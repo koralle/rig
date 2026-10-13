@@ -4,8 +4,8 @@ use crate::cli::command;
 
 use crate::run::Run;
 
-impl Run for command::Grep {
+impl Run for command::RefLog {
     fn run(&self) -> Result<()> {
-        todo!("Implement command::Grep::run()")
+        anyhow::bail!("command::RefLog::run() is not implemented yet")
     }
 }

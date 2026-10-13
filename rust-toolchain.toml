@@ -1,0 +1,9 @@
+# rust-toolchain.toml
+#
+# このリポジトリで使うツールチェーン。rustup / mise がこのファイルを読んで
+# channel と components を解決する。ローカルの既定 (nightly など) には依存しない。
+
+[toolchain]
+channel = "1.99.0"
+profile = "minimal"
+components = ["rustfmt", "clippy"]

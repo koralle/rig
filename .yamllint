@@ -1,0 +1,23 @@
+# yamllint の設定。
+#
+# pi-lens などが yamllint を既定ルールで走らせるので、このリポジトリの書き方に
+# 合わせて緩めるところだけ緩める。実行:
+#
+#   yamllint $(git ls-files '*.yaml' '*.yml')
+extends: default
+
+rules:
+  # リポジトリの YAML は先頭の `---` を書かない
+  document-start: disable
+
+  # ` # v1.2.3` のように 1 文字空けてコメントを書く
+  comments:
+    min-spaces-from-content: 1
+
+  # GitHub Actions の `on:` を真偽値として指摘させない
+  truthy:
+    check-keys: false
+
+  # Action の SHA ピンは 1 行で書く (長い行は disable-line コメントで個別に除外)
+  line-length:
+    max: 100
