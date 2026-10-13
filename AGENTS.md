@@ -1,8 +1,8 @@
 # rig
 
 git の操作を Neovim から扱う CLI (Rust)。ルートは workspace で、実体は
-`crates/rig` のバイナリ。CLI のサブコマンド定義まではあるが実装は未着手
-(未実装の `run()` は `anyhow::bail!` でエラーを返す)。
+`crates/rig` のバイナリ + ライブラリ。実装はこれから (ソースは骨組みだけで、
+依存も未追加)。
 
 Rust を書くとき:
 

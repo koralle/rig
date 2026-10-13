@@ -7,34 +7,9 @@ rust-version.workspace = true
 # publish = false のクレートをライセンス未記載でも許可する)
 publish = false
 
+# 依存は実装で必要になった時点で追加する (ルート Cargo.toml の
+# [workspace.dependencies] に書いて .workspace = true で参照する)
 [dependencies]
-anyhow.workspace = true
-chrono.workspace = true
-clap.workspace = true
-crossterm.workspace = true
-git2.workspace = true
-nix.workspace = true
-nvim-rs.workspace = true
-once_cell.workspace = true
-regex.workspace = true
-thiserror.workspace = true
-windows.workspace = true
 
 [lints]
 workspace = true
-
-# CLI サブコマンドが未実装の間は、実装で使う予定の依存が「未使用」と判定される。
-# 実際に使い始めたらこのリストから外していく (検出力を落とさないため、常に
-# 必要最小限に保つ)。
-[package.metadata.cargo-machete]
-ignored = [
-  "chrono",
-  "crossterm",
-  "git2",
-  "nix",
-  "nvim-rs",
-  "once_cell",
-  "regex",
-  "thiserror",
-  "windows",
-]

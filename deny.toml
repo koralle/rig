@@ -3,15 +3,23 @@
 # ローカル: mise run deny
 # CI:       .github/workflows/ci.yaml の deny ジョブ
 # ドキュメント: https://embarkstudios.github.io/cargo-deny/
+#
+# 依存を戻すときの注意 (今は依存が無いので、下の ignore / exceptions は
+# コメントアウトしてある):
+# - git2: 0.21 未満は RUSTSEC-2024-0013 (libgit2 < 1.7.2 の脆弱性: ヒープ破壊 /
+#   DoS / OOB read) と unsound 3 件 (RUSTSEC-2026-0008 / 0183 / 0184) を踏む。
+#   0.17 系を使うなら advisories.ignore に理由付きで追加し、ローカルビルドに
+#   openssl + pkg-config が要る (libgit2-sys 0.15 は cc でビルドされ cmake は不要)。
+# - nvim-rs: ライセンスが LGPL-3.0 なので licenses.exceptions に crate 限定の
+#   例外が必要。また futures の io-compat を必須で有効にするため tokio-io 0.1
+#   (unmaintained / RUSTSEC-2026-0058) が必ず入る。上流に修正が無く安全な
+#   アップグレードも無い (nvim-rs の更新を確認して解消したら ignore を消す)。
 
 [advisories]
 # 無視するアドバイザリを追加する場合は理由とセットで書く
 ignore = [
-  # nvim-rs 0.9.2 が futures の io-compat feature を必須で有効にしているため、
-  # tokio-io 0.1 が必ず依存に入る。上流に修正が無く安全な代替も無い
-  # (nvim-rs 側の実装が変わるか、別のクライアントに乗り換えるまで保留)。
-  # 定期的に nvim-rs の更新を確認し、解消したらこの entry を消すこと。
-  { id = "RUSTSEC-2026-0058", reason = "nvim-rs の必須依存 (futures io-compat) 経由。安全なアップグレードが存在しない" },
+  # nvim-rs を戻すときに必要:
+  # { id = "RUSTSEC-2026-0058", reason = "nvim-rs の必須依存 (futures io-compat) 経由。安全なアップグレードが存在しない" },
 ]
 
 [bans]
@@ -39,10 +47,10 @@ allow = [
   "Unicode-3.0",
   "Zlib",
 ]
-# LGPL-3.0 は許可リストに入れず、nvim-rs (Neovim RPC クライアント) だけを例外にする。
-# 方針を変えるときはこの例外を外す (nvim-rs は publish = false なので再配布しない)。
+# LGPL-3.0 のようなコピーレフトは許可リストに入れず、特定のクレートだけを
+# 例外にする方針 (nvim-rs を戻すときは下の 1 行を有効にする)。
 exceptions = [
-  { allow = ["LGPL-3.0"], name = "nvim-rs", version = "*" },
+  # { allow = ["LGPL-3.0"], name = "nvim-rs", version = "*" },
 ]
 
 [licenses.private]

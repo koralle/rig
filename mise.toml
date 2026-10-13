@@ -39,7 +39,9 @@ run = "cargo clippy --workspace --all-targets --all-features -- -D warnings"
 # テスト
 [tasks.test]
 description = "テストを実行する (nextest)"
-run = "cargo nextest run --workspace --all-features"
+# テストが 0 件の間は nextest が exit 4 で落ちるため pass 扱いにする
+# (0 件のときだけ効くので、テストを追加してもこのままでよい)
+run = "cargo nextest run --workspace --all-features --no-tests=pass"
 
 [tasks.test-doc]
 description = "doc テストを実行する"

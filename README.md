@@ -2,9 +2,9 @@
 
 git の操作を Neovim から扱うための CLI (Rust / 開発中)。
 
-サブコマンド (`log` / `show` / `reflog` / `blame` / `grep` / `refs` / `stash` /
-`status`) の定義だけがあり、実装は未着手。未実装のコマンドは実行時に
-`anyhow::bail!` で「not implemented yet」を返す。
+実装はこれから。ソースは `crates/rig` の骨組み (`main.rs` / `lib.rs`) だけで、
+依存もまだ 1 つも無い。CLI のサブコマンドや追加のクレートは必要になった
+時点で足す。
 
 ## 開発
 
@@ -48,7 +48,7 @@ mise run setup   # ツール導入 (nextest / machete / deny / lefthook) + Git �
 - **CI** (`.github/workflows/ci.yaml`): 変更ファイルに応じて format / clippy /
   deny / machete / test を実行し、`ci-gate` で結果を集約する。ツールの版数は
   `mise.toml` と揃える。依存の更新は dependabot (週次・グループ化・major は保留)。
-- **依存ポリシー**: `deny.toml` のライセンス許可リストと例外、`Cargo.toml` の
-  `[package.metadata.cargo-machete]` の除外リストは、理由をコメントに書いて
-  最小限に保つ。例外を外す条件 (未実装コマンドの実装、上流の修正) が来たら
-  リストから消す。
+- **依存ポリシー**: 依存は実装で必要になった時点でルート `Cargo.toml` の
+  `[workspace.dependencies]` に追加する。追加したら `deny.toml` の冒頭にある
+  既知の注意 (git2 / nvim-rs) を確認し、machete の除外や deny の例外を使う
+  場合は理由をコメントに書いて最小限に保ち、解消したら消す。
