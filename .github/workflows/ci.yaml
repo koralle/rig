@@ -112,10 +112,16 @@ jobs:
 
       - uses: jdx/mise-action@08ae2a091c038e1e05ec6f5115dc5c69d5a2a6b8 # v5.1.2
         with:
-          # 全部入れると cargo バックエンドのビルドが走るため、lint 用のツールだけ入れる
+          # 全部入れると cargo バックエンドのツール導入 (rust + nextest + machete + deny)
+          # が走って数分かかるため、lint 用のツールだけ入れる
           install_args: github:rhysd/actionlint pipx:yamllint
 
-      - run: mise run check-config
+      # auto_install を切らないと mise run が未導入のツールまで入れてしまう
+      # (mise-action が入れた actionlint / yamllint は PATH にある)
+      - name: mise run check-config
+        env:
+          MISE_AUTO_INSTALL: "false"
+        run: mise run check-config
 
   deny:
     needs: changes
