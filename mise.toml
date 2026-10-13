@@ -1,4 +1,5 @@
-# cargo-nextest / cargo-machete / cargo-deny は CI の tool: と同じバージョンに揃える。
+# cargo-nextest / cargo-machete / cargo-deny は CI の tool: と同じバージョンに揃える
+# (整合は mise run check-config が検査する)。
 # rust は mise のグローバル設定 (RUSTUP_TOOLCHAIN) が rust-toolchain.toml を
 # 上書きするため、ここでも同じ channel を明示する。
 [tools]
@@ -7,6 +8,9 @@ rust = "1.99.0"
 "cargo:cargo-machete" = "0.9.2"
 "cargo:cargo-deny" = "0.20.2"
 "npm:lefthook" = "2.1.12"
+# workflow / YAML の lint (CI の config ジョブも同じものを使う)
+"github:rhysd/actionlint" = "1.7.12"
+"pipx:yamllint" = "1.38.0"
 
 [tasks.setup]
 description = "開発環境をセットアップする"
@@ -50,9 +54,17 @@ run = "cargo machete"
 description = "依存クレートのポリシー (脆弱性 / ライセンス) をチェックする"
 run = "cargo deny --all-features --locked check"
 
+[tasks.check-config]
+description = "設定ファイル (workflow / YAML / ツールの版数) を検査する"
+run = """
+bash scripts/check-versions.sh
+actionlint -color
+yamllint -c .yamllint .github lefthook.yaml
+"""
+
 [tasks.check]
-description = "フォーマットと Clippy をチェックする (pre-commit)"
-depends = ["fmt-check", "clippy"]
+description = "フォーマット / Clippy / 設定ファイルをチェックする (pre-commit)"
+depends = ["fmt-check", "clippy", "check-config"]
 
 # depends は依存タスクを並列に起動する (cargo が build directory の lock で
 # 待たされる) ため、直列を保証する目的で run から順に呼ぶ。
@@ -60,6 +72,7 @@ depends = ["fmt-check", "clippy"]
 description = "CI と同じチェックを直列で実行する"
 run = """
 mise run fmt-check
+mise run check-config
 mise run clippy
 mise run doc
 mise run test

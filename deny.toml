@@ -2,9 +2,12 @@
 # - git2: 0.21 未満は RUSTSEC-2024-0013 (libgit2 < 1.7.2 の脆弱性) と unsound 3 件
 #   (RUSTSEC-2026-0008 / 0183 / 0184) を踏む。0.17 系を使うなら ignore に理由付きで
 #   追加し、ローカルビルドに openssl + pkg-config が要る (cmake は不要)。
-# - nvim-rs: LGPL-3.0 なので crate 限定の例外が要る。futures の io-compat を必須で
-#   有効にするため tokio-io 0.1 (unmaintained / RUSTSEC-2026-0058) も必ず入る
-#   (上流に修正が無く安全なアップグレードも無い)。
+# - nvim-rs: LGPL-3.0 なので crate 限定の例外が要る。Rust は静的リンクするため、
+#   バイナリを配布するなら LGPL-3.0 の再リンク要件を確認する (配布しない間は例外で許容)。
+#   futures の io-compat を必須で有効にするため tokio-io 0.1 (unmaintained /
+#   RUSTSEC-2026-0058) も必ず入る (上流に修正が無く安全なアップグレードも無い)。
+# - dirs 系 (config のパス解決に使う場合): dirs-sys -> option-ext が MPL-2.0 単独なので、
+#   許可リストには入れずこのクレート限定の例外を検討する。
 
 [advisories]
 # 既定値のままだと warn で CI が落ちないため、明示的に締める:
@@ -22,12 +25,33 @@ ignore = [
 ]
 
 [bans]
-multiple-versions = "warn"
+multiple-versions = "deny"
 wildcards = "deny"
 highlight = "all"
 
+# [workspace.dependencies] の運用を強制する:
+# - duplicates: member が workspace = true を使わず直接宣言したらエラー
+# - unused: 誰も使っていない workspace 依存をエラー (cargo-machete では検出できない)
+[bans.workspace-dependencies]
+duplicates = "deny"
+unused = "deny"
+include-path-dependencies = true
+
+# build script / ネイティブ実行ファイルは明示的に許可したものだけ通す。
+# 依存を足して build script 持ちが入ったら、中身を確認してここに理由付きで追加する
+[bans.build]
+allow-build-scripts = []
+executables = "deny"
+
+# git2 の https / ssh を有効にすると openssl と libssh2 (native 依存) が要るため封じる
+[[bans.features]]
+crate = "git2"
+deny = ["https", "ssh", "vendored-openssl"]
+
 [licenses]
 confidence-threshold = 0.8
+# この allow は「受け入れる方針」の一覧なので、未使用のエントリがあっても正常。
+# warn にすると依存ゼロの今は毎回 8 件の警告が出て出力を読まなくなるため allow のまま
 unused-allowed-license = "allow"
 allow = [
   "MIT",

@@ -92,9 +92,30 @@ jobs:
 
       # 壊れた intra-doc link などは cargo test --doc では検出されないため、
       # rustdoc 自体を回して警告をエラーにする
-      - run: |
-          RUSTDOCFLAGS="-D warnings" cargo doc --locked --workspace --all-features \
+      - name: cargo doc (rustdoc の警告をエラーにする)
+        env:
+          RUSTDOCFLAGS: -D warnings
+        run: |
+          cargo doc --locked --workspace --all-features \
             --document-private-items --no-deps
+
+  # 設定ファイルの検査: workflow の構文 / 式 (actionlint)、YAML の作法 (yamllint)、
+  # ツールの版数の整合 (scripts/check-versions.sh)。
+  # ツールは mise.toml を唯一の出所にするため、mise 経由で入れて mise のタスクを叩く
+  config:
+    needs: changes
+    if: needs.changes.outputs.rust == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: jdx/mise-action@08ae2a091c038e1e05ec6f5115dc5c69d5a2a6b8 # v5.1.2
+        with:
+          # 全部入れると cargo バックエンドのビルドが走るため、lint 用のツールだけ入れる
+          install_args: github:rhysd/actionlint pipx:yamllint
+
+      - run: mise run check-config
 
   deny:
     needs: changes
@@ -149,10 +170,33 @@ jobs:
           tool: nextest@0.9.144
 
       # テストが 0 件の間は nextest が exit 4 で落ちるため pass 扱いにする
-      - run: cargo nextest run --locked --workspace --all-features --no-tests=pass
+      # (プロファイルは .config/nextest.toml: fail-fast なし / リトライ / ハング検出)
+      - run: cargo nextest run --locked --profile ci --workspace --all-features --no-tests=pass
 
       # nextest は doctest を実行しないため個別に実行する
       - run: cargo test --doc --locked --workspace --all-features
+
+  # macOS / Windows でもビルドとテストが通ることを見る。プラットフォーム依存の
+  # コードを書くツールなので、Linux だけでは検証にならない
+  platforms:
+    needs: changes
+    if: needs.changes.outputs.rust == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: ./.github/actions/setup-rust-toolchain
+
+      - uses: taiki-e/install-action@3f74d7c16a4242f1c95561e98edc25d36adb4375 # v2.87.12
+        with:
+          tool: nextest@0.9.144
+
+      - run: cargo nextest run --locked --profile ci --workspace --all-features --no-tests=pass
 
   ci-gate:
     name: CI Gate
@@ -162,8 +206,10 @@ jobs:
       - format
       - clippy
       - doc
+      - config
       - machete
       - test
+      - platforms
       - deny
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -174,8 +220,10 @@ jobs:
       FORMAT_RESULT: ${{ needs.format.result }}
       CLIPPY_RESULT: ${{ needs.clippy.result }}
       DOC_RESULT: ${{ needs.doc.result }}
+      CONFIG_RESULT: ${{ needs.config.result }}
       MACHETE_RESULT: ${{ needs.machete.result }}
       TEST_RESULT: ${{ needs.test.result }}
+      PLATFORMS_RESULT: ${{ needs.platforms.result }}
       DENY_RESULT: ${{ needs.deny.result }}
     steps:
       - name: Verify CI results
@@ -204,8 +252,10 @@ jobs:
             check_success format "$FORMAT_RESULT"
             check_success clippy "$CLIPPY_RESULT"
             check_success doc "$DOC_RESULT"
+            check_success config "$CONFIG_RESULT"
             check_success machete "$MACHETE_RESULT"
             check_success test "$TEST_RESULT"
+            check_success platforms "$PLATFORMS_RESULT"
           fi
 
           if [[ "$DEPS_CHANGED" == "true" ]]; then

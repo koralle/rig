@@ -12,6 +12,16 @@ rust-version = "1.99"
 
 [workspace.lints.rust]
 unsafe_op_in_unsafe_fn = "deny"
+# unsafe は書かせない (必要になったらここを変えて理由を残す)
+unsafe_code = "forbid"
+# missing_docs はここには入れない。workspace lints にすると結合テスト (tests/*.rs は
+# 別の crate root) にも crate ドキュメントを要求してしまうため、公開 API を持つ
+# ライブラリの crate root (crates/*/src/lib.rs) で deny する
+# lint グループは個別 lint と priority が衝突するため priority = -1 を付ける
+rust_2024_compatibility = { level = "deny", priority = -1 }
+unreachable_pub = "deny"
+elided_lifetimes_in_paths = "deny"
+let_underscore_drop = "deny"
 
 [workspace.lints.clippy]
 unwrap_used = "deny"
@@ -20,3 +30,17 @@ panic = "deny"
 todo = "deny"
 unimplemented = "deny"
 dbg_macro = "deny"
+unreachable = "deny"
+unwrap_in_result = "deny"
+# unsafe を許すことになった場合の最低線 (unsafe_code = forbid と二重に塞ぐ)
+undocumented_unsafe_blocks = "deny"
+# Neovim と stdio でやり取りするため、ライブラリから stdout に書かせない
+# (出力はバイナリの main.rs だけに集める。main.rs で allow している)
+print_stdout = "deny"
+
+# 配布バイナリ向けの設定。正しさ優先で桁あふれも release で検出する
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = true
+overflow-checks = true

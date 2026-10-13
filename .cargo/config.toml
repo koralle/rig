@@ -1,0 +1,5 @@
+# rustc の警告もエラーにする。
+# CI の setup-rust-toolchain が既定で CARGO_BUILD_WARNINGS=deny を設定するが、
+# action の暗黙の既定に依存せず、ローカルの build / test / doc でも同じ挙動にする
+[build]
+warnings = "deny"
