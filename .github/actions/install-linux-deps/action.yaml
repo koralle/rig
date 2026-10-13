@@ -1,0 +1,28 @@
+name: Install Linux build dependencies
+description: Install the system libraries GPUI / GPUI Kit need to build on Linux
+
+# gpui-kit (GPUI) は Linux で X11 / Wayland / fontconfig / xkbcommon の開発パッケージを
+# pkg-config 経由で要求する。macOS / Windows では何も要らないため runner.os で分岐する。
+#
+# 使う側は uses: ./.github/actions/install-linux-deps で呼ぶ (リポジトリ内の composite
+# action を ./ で呼ぶ理由は setup-rust-toolchain/action.yaml のコメントを参照)。
+#
+# パッケージは gpui-kit の script/install-linux.sh (Ubuntu 24.04 で検証済み) から、
+# 次のものを除いた組み合わせ:
+# - libasound2-dev: speech feature 専用 (有効にしていない)
+# - libwebkit2gtk-4.1-dev: webview 用 (依存に入っていない)
+# - vulkan-validationlayers / libvulkan1: 実行時のみ必要 (CI のテストは test platform で
+#   動くため GPU ドライバーを使わない)
+# - libssl-dev / libzstd-dev: openssl-sys / zstd-sys が依存に入っていない
+
+runs:
+  using: composite
+  steps:
+    - name: apt-get install
+      if: runner.os == 'Linux'
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          clang libfontconfig1-dev libwayland-dev libx11-xcb-dev \
+          libxkbcommon-x11-dev pkg-config
