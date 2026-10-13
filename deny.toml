@@ -13,15 +13,25 @@
 # 既定値のままだと warn で CI が落ちないため、明示的に締める:
 # - yanked: 既定 warn。yank は取り下げ・差し替えの合図なのでエラーにする
 # - unsound: 既定 workspace (直接依存のみ)。transitive の未定義動作も踏むため all
+# - unmaintained: 既定 all。transitive のメンテ終了も把握するため明示的に all のままにする
 # - unused-ignored-advisory: 遭遇しなくなった ignore を残さない (解消したら消す運用の機械化)
 # なお 0.20.2 の ignore entry は id / reason のみで、expiry による期限切れ検知は未実装。
 # 期限は reason に書いて人間が再確認する
 yanked = "deny"
 unsound = "all"
+unmaintained = "all"
 unused-ignored-advisory = "deny"
 ignore = [
   # nvim-rs を戻すときに必要 (reason に再確認の時期を書いて定期に見直す):
   # { id = "RUSTSEC-2026-0058", reason = "nvim-rs の必須依存 (futures io-compat) 経由。安全なアップグレードが存在しない (2026-10 時点、半年後に再確認)" },
+  # GUI (gpui-kit) の依存に上流由来の unmaintained が 5 件ある。どれも脆弱性 / unsound /
+  # yanked ではなく、上流が依存を差し替えるまでこちらでは直せない。gpui-kit を上げるときに
+  # 消せるか確認する (2026-10 時点、半年後に見直す)
+  { id = "RUSTSEC-2024-0384", reason = "gpui-component の依存 (instant)。上流が差し替えるまで直せない (2026-10 時点、半年後に再確認)" },
+  { id = "RUSTSEC-2024-0436", reason = "gpui-pre-apple / gpui-kit の依存 (paste)。上流が差し替えるまで直せない (2026-10 時点、半年後に再確認)" },
+  { id = "RUSTSEC-2025-0134", reason = "gpui-kit の依存 (rustls-pemfile)。上流が差し替えるまで直せない (2026-10 時点、半年後に再確認)" },
+  { id = "RUSTSEC-2026-0206", reason = "resvg -> gpui-component の依存 (rustybuzz)。上流が差し替えるまで直せない (2026-10 時点、半年後に再確認)" },
+  { id = "RUSTSEC-2026-0192", reason = "cosmic-text -> gpui-pre-wgpu の依存 (ttf-parser)。上流が差し替えるまで直せない (2026-10 時点、半年後に再確認)" },
 ]
 
 [bans]
