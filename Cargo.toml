@@ -6,6 +6,7 @@ default-members = ["crates/*"]
 [workspace.package]
 edition = "2024"
 rust-version = "1.99"
+license = "MIT"
 
 # 依存は必要になった時点でここに追加する (追加時は deny.toml 冒頭の注意を確認)
 [workspace.dependencies]

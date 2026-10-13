@@ -81,3 +81,8 @@ mise run setup   # ツール導入 (nextest / machete / deny / lefthook / action
   `[workspace.dependencies]` に追加する。追加したら `deny.toml` の冒頭にある
   既知の注意 (git2 / nvim-rs) を確認し、machete の除外や deny の例外を使う
   場合は理由をコメントに書いて最小限に保ち、解消したら消す。
+
+## ライセンス
+
+MIT (詳細は [LICENSE](LICENSE))。依存クレートのライセンスは MIT と互換なものだけを
+`deny.toml` の allow リストで許可している (コピーレフトはクレート単位の例外にする)。
