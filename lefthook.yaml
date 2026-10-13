@@ -12,6 +12,12 @@ pre-push:
     test:
       run: mise run test
       fail_text: "Rust のテストに失敗しました。"
+    test-doc:
+      run: mise run test-doc
+      fail_text: "doc テストに失敗しました。"
+    doc:
+      run: mise run doc
+      fail_text: "rustdoc の警告チェックに失敗しました。"
     deny:
       run: mise run deny
       fail_text: "依存クレートのポリシーチェック (cargo-deny) に失敗しました。"

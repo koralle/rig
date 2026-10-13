@@ -7,9 +7,18 @@
 #   (上流に修正が無く安全なアップグレードも無い)。
 
 [advisories]
+# 既定値のままだと warn で CI が落ちないため、明示的に締める:
+# - yanked: 既定 warn。yank は取り下げ・差し替えの合図なのでエラーにする
+# - unsound: 既定 workspace (直接依存のみ)。transitive の未定義動作も踏むため all
+# - unused-ignored-advisory: 遭遇しなくなった ignore を残さない (解消したら消す運用の機械化)
+# なお 0.20.2 の ignore entry は id / reason のみで、expiry による期限切れ検知は未実装。
+# 期限は reason に書いて人間が再確認する
+yanked = "deny"
+unsound = "all"
+unused-ignored-advisory = "deny"
 ignore = [
-  # nvim-rs を戻すときに必要:
-  # { id = "RUSTSEC-2026-0058", reason = "nvim-rs の必須依存 (futures io-compat) 経由。安全なアップグレードが存在しない" },
+  # nvim-rs を戻すときに必要 (reason に再確認の時期を書いて定期に見直す):
+  # { id = "RUSTSEC-2026-0058", reason = "nvim-rs の必須依存 (futures io-compat) 経由。安全なアップグレードが存在しない (2026-10 時点、半年後に再確認)" },
 ]
 
 [bans]
@@ -31,8 +40,9 @@ allow = [
   "Zlib",
 ]
 # コピーレフトは許可リストに入れず、特定のクレートだけ例外にする
+# (0.20 の公式キーは crate。name も受理されるが使わない)
 exceptions = [
-  # { allow = ["LGPL-3.0"], name = "nvim-rs", version = "*" },
+  # { allow = ["LGPL-3.0"], crate = "nvim-rs", version = "*" },
 ]
 
 [licenses.private]

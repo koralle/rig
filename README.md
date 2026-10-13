@@ -14,7 +14,9 @@ git の操作を Neovim から扱うための CLI (Rust / 開発中)。
 - Rust は `rust-toolchain.toml` が固定する (現在 1.99.0)。`mise.toml` の
   `rust` も同じ値にしてある (mise のグローバル設定が `RUSTUP_TOOLCHAIN` を
   export していても、リポジトリ側の値が勝つようにするため)
-- native のビルド依存は不要 (libgit2 は vendored で同梱、`cc` でビルドされる)
+- native のビルド依存は不要 (`git2` 0.21 の default features は空なので、libgit2 を
+  同梱ソースから `cc` でビルドする)。`https` / `ssh` を有効にすると openssl と
+  libssh2 (pkg-config) が要るため、有効化するときは CI にも導入が必要
 
 ### セットアップ
 
@@ -31,10 +33,14 @@ mise run setup   # ツール導入 (nextest / machete / deny / lefthook) + Git �
 | `mise run clippy` | Clippy (`-D warnings`) |
 | `mise run test` | nextest でテストする |
 | `mise run test-doc` | doc テスト |
+| `mise run doc` | rustdoc の警告 (壊れたリンクなど) をエラーにする |
 | `mise run machete` | 未使用クレートを検出する |
 | `mise run deny` | 依存のポリシーチェック (脆弱性 / ライセンス / 取得元) |
 | `mise run check` | `fmt-check` + `clippy` (pre-commit と同じ) |
 | `mise run ci` | CI と同じ一式を直列で実行する |
+
+`Cargo.toml` の依存を変えたときは `cargo build` などで `Cargo.lock` を更新してから
+コミットする (各タスクは `--locked` 付きで走るため、lock が古いと失敗する)。
 
 ## ガードレール
 
@@ -44,10 +50,13 @@ mise run setup   # ツール導入 (nextest / machete / deny / lefthook) + Git �
   `[lints] workspace = true` で継承)。未実装は `todo!()` ではなく
   `anyhow::bail!` でエラーを返す。
 - **Git フック** (`lefthook.yaml`): pre-commit で `mise run check` と `machete`、
-  pre-push で `test` と `deny`。`--no-verify` で回避しない。
+  pre-push で `test` / `test-doc` / `doc` / `deny`。`--no-verify` で回避しない。
 - **CI** (`.github/workflows/ci.yaml`): 変更ファイルに応じて format / clippy /
-  deny / machete / test を実行し、`ci-gate` で結果を集約する。ツールの版数は
-  `mise.toml` と揃える。依存の更新は dependabot (週次・グループ化・major は保留)。
+  doc / deny / machete / test を実行し、`ci-gate` で結果を集約する。ツールの
+  版数は `mise.toml` と揃える。依存の更新は dependabot (週次・グループ化・
+  major は保留)。
+- **定期チェック** (`.github/workflows/scheduled-checks.yaml`): 依存が変わらなくても
+  増えるもの (新規 advisory / yanked) を週次で検出するため `cargo deny` を実行する。
 - **依存ポリシー**: 依存は実装で必要になった時点でルート `Cargo.toml` の
   `[workspace.dependencies]` に追加する。追加したら `deny.toml` の冒頭にある
   既知の注意 (git2 / nvim-rs) を確認し、machete の除外や deny の例外を使う

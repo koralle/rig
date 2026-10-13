@@ -21,18 +21,26 @@ run = "cargo fmt --all"
 description = "フォーマットをチェックする"
 run = "cargo fmt --all -- --check"
 
+# cargo を伴うタスクは --locked 付きで実行する。依存を足して Cargo.lock を
+# 更新し忘れた状態を、ローカルでも CI でも失敗させるため (CI は --locked が無いと
+# lock を書き換えて成功してしまい、古い lock がそのまま入る)。
 [tasks.clippy]
 description = "Clippy で lint する"
-run = "cargo clippy --workspace --all-targets --all-features -- -D warnings"
+run = "cargo clippy --locked --workspace --all-targets --all-features -- -D warnings"
 
 [tasks.test]
 description = "テストを実行する (nextest)"
 # テストが 0 件の間は nextest が exit 4 で落ちるため pass 扱いにする
-run = "cargo nextest run --workspace --all-features --no-tests=pass"
+run = "cargo nextest run --locked --workspace --all-features --no-tests=pass"
 
 [tasks.test-doc]
 description = "doc テストを実行する"
-run = "cargo test --doc --workspace --all-features"
+run = "cargo test --doc --locked --workspace --all-features"
+
+[tasks.doc]
+description = "rustdoc の警告 (壊れたリンクなど) をエラーにする"
+# 壊れた intra-doc link は cargo test --doc では検出されないため cargo doc で見る
+run = "RUSTDOCFLAGS='-D warnings' cargo doc --locked --workspace --all-features --document-private-items --no-deps"
 
 [tasks.machete]
 description = "未使用クレートを検出する"
@@ -46,6 +54,16 @@ run = "cargo deny --all-features --locked check"
 description = "フォーマットと Clippy をチェックする (pre-commit)"
 depends = ["fmt-check", "clippy"]
 
+# depends は依存タスクを並列に起動する (cargo が build directory の lock で
+# 待たされる) ため、直列を保証する目的で run から順に呼ぶ。
 [tasks.ci]
-description = "CI と同じチェックをまとめて実行する (直列: mise run -j 1 ci)"
-depends = ["fmt-check", "clippy", "test", "test-doc", "machete", "deny"]
+description = "CI と同じチェックを直列で実行する"
+run = """
+mise run fmt-check
+mise run clippy
+mise run doc
+mise run test
+mise run test-doc
+mise run machete
+mise run deny
+"""

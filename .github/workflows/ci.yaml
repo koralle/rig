@@ -7,7 +7,9 @@ on:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # PR は最新の push だけ検証すればよいが、main への push はキャンセルしない
+  # (検証されないコミットを作らないため)
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   CARGO_TERM_COLOR: always
@@ -16,9 +18,12 @@ permissions:
   contents: read
 
 jobs:
-  # ドキュメントのみの変更で Rust のジョブを走らせないため、変更ファイルを判定する
+  # ドキュメントのみの変更で Rust のジョブを走らせないため、変更ファイルを判定する。
+  # 許可リスト方式だと新しい設定ファイル (clippy.toml など) が漏れて素通りするため、
+  # 「Markdown 以外は全部」という否定パターン方式にしている。
   changes:
     runs-on: ubuntu-24.04
+    timeout-minutes: 5
     permissions:
       contents: read
       pull-requests: read
@@ -31,25 +36,26 @@ jobs:
       - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         id: filter
         with:
+          # 否定パターン ('!**/*.md') を有効にするには some-with-excludes が必要。
+          # 既定の 'some' では '**' が常に一致して除外が効かない
+          predicate-quantifier: some-with-excludes
           filters: |
             rust:
-              - 'crates/**'
-              - 'Cargo.toml'
-              - 'Cargo.lock'
-              - 'rust-toolchain.toml'
-              - '.github/actions/**'
-              - '.github/workflows/ci.yaml'
+              - '**'
+              - '!**/*.md'
             deps:
-              - 'Cargo.toml'
+              - '**/Cargo.toml'
               - 'Cargo.lock'
               - 'deny.toml'
-              - '.github/actions/**'
-              - '.github/workflows/ci.yaml'
+              - 'rust-toolchain.toml'
+              - '.cargo/**'
+              - '.github/**'
 
   format:
     needs: changes
     if: needs.changes.outputs.rust == 'true'
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -63,18 +69,38 @@ jobs:
     needs: changes
     if: needs.changes.outputs.rust == 'true'
     runs-on: ubuntu-24.04
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - uses: ./.github/actions/setup-rust-toolchain
 
+      # --locked: Cargo.lock が更新されていない状態で CI が lock を書き換えて
+      # 成功してしまうのを防ぐ
       - run: |
-          cargo clippy --workspace --all-targets --all-features -- -D warnings
+          cargo clippy --locked --workspace --all-targets --all-features -- -D warnings
+
+  doc:
+    needs: changes
+    if: needs.changes.outputs.rust == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: ./.github/actions/setup-rust-toolchain
+
+      # 壊れた intra-doc link などは cargo test --doc では検出されないため、
+      # rustdoc 自体を回して警告をエラーにする
+      - run: |
+          RUSTDOCFLAGS="-D warnings" cargo doc --locked --workspace --all-features \
+            --document-private-items --no-deps
 
   deny:
     needs: changes
     if: needs.changes.outputs.deps == 'true'
     runs-on: ubuntu-24.04
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -86,12 +112,15 @@ jobs:
         with:
           tool: cargo-deny@0.20.2
 
+      # 依存が変わらなくても新規 advisory / yanked は増えるため、週次で
+      # scheduled-checks.yaml からも同じコマンドを実行する
       - run: cargo deny --all-features --locked check
 
   machete:
     needs: changes
     if: needs.changes.outputs.rust == 'true'
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -109,6 +138,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.rust == 'true'
     runs-on: ubuntu-24.04
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -119,10 +149,10 @@ jobs:
           tool: nextest@0.9.144
 
       # テストが 0 件の間は nextest が exit 4 で落ちるため pass 扱いにする
-      - run: cargo nextest run --workspace --all-features --no-tests=pass
+      - run: cargo nextest run --locked --workspace --all-features --no-tests=pass
 
       # nextest は doctest を実行しないため個別に実行する
-      - run: cargo test --doc --workspace --all-features
+      - run: cargo test --doc --locked --workspace --all-features
 
   ci-gate:
     name: CI Gate
@@ -131,16 +161,19 @@ jobs:
       - changes
       - format
       - clippy
+      - doc
       - machete
       - test
       - deny
     runs-on: ubuntu-24.04
+    timeout-minutes: 5
     env:
       CHANGES_RESULT: ${{ needs.changes.result }}
       RUST_CHANGED: ${{ needs.changes.outputs.rust }}
       DEPS_CHANGED: ${{ needs.changes.outputs.deps }}
       FORMAT_RESULT: ${{ needs.format.result }}
       CLIPPY_RESULT: ${{ needs.clippy.result }}
+      DOC_RESULT: ${{ needs.doc.result }}
       MACHETE_RESULT: ${{ needs.machete.result }}
       TEST_RESULT: ${{ needs.test.result }}
       DENY_RESULT: ${{ needs.deny.result }}
@@ -148,25 +181,29 @@ jobs:
       - name: Verify CI results
         shell: bash
         run: |
-          set -euo pipefail
+          # set -e は使わない (失敗を集めてから最後にまとめて落とす)
+          set -uo pipefail
 
           if [[ "$CHANGES_RESULT" != "success" ]]; then
             echo "::error::changes job did not succeed: $CHANGES_RESULT"
             exit 1
           fi
 
+          failed=0
+
           check_success() {
             local job="$1"
             local result="$2"
             if [[ "$result" != "success" ]]; then
               echo "::error::$job was expected to succeed but finished with $result"
-              return 1
+              failed=1
             fi
           }
 
           if [[ "$RUST_CHANGED" == "true" ]]; then
             check_success format "$FORMAT_RESULT"
             check_success clippy "$CLIPPY_RESULT"
+            check_success doc "$DOC_RESULT"
             check_success machete "$MACHETE_RESULT"
             check_success test "$TEST_RESULT"
           fi
@@ -174,3 +211,5 @@ jobs:
           if [[ "$DEPS_CHANGED" == "true" ]]; then
             check_success deny "$DENY_RESULT"
           fi
+
+          exit "$failed"
