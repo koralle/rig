@@ -1,7 +1,4 @@
-# rust-toolchain.toml
-#
-# このリポジトリで使うツールチェーン。rustup / mise がこのファイルを読んで
-# channel と components を解決する。ローカルの既定 (nightly など) には依存しない。
+# ローカルの既定 (nightly など) に依存しないよう固定する
 
 [toolchain]
 channel = "1.99.0"

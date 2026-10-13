@@ -1,42 +1,25 @@
-# cargo-deny の設定
-#
-# ローカル: mise run deny
-# CI:       .github/workflows/ci.yaml の deny ジョブ
-# ドキュメント: https://embarkstudios.github.io/cargo-deny/
-#
-# 依存を戻すときの注意 (今は依存が無いので、下の ignore / exceptions は
-# コメントアウトしてある):
-# - git2: 0.21 未満は RUSTSEC-2024-0013 (libgit2 < 1.7.2 の脆弱性: ヒープ破壊 /
-#   DoS / OOB read) と unsound 3 件 (RUSTSEC-2026-0008 / 0183 / 0184) を踏む。
-#   0.17 系を使うなら advisories.ignore に理由付きで追加し、ローカルビルドに
-#   openssl + pkg-config が要る (libgit2-sys 0.15 は cc でビルドされ cmake は不要)。
-# - nvim-rs: ライセンスが LGPL-3.0 なので licenses.exceptions に crate 限定の
-#   例外が必要。また futures の io-compat を必須で有効にするため tokio-io 0.1
-#   (unmaintained / RUSTSEC-2026-0058) が必ず入る。上流に修正が無く安全な
-#   アップグレードも無い (nvim-rs の更新を確認して解消したら ignore を消す)。
+# 依存を戻すときの注意 (今は依存が無いため ignore / exceptions はコメントアウト):
+# - git2: 0.21 未満は RUSTSEC-2024-0013 (libgit2 < 1.7.2 の脆弱性) と unsound 3 件
+#   (RUSTSEC-2026-0008 / 0183 / 0184) を踏む。0.17 系を使うなら ignore に理由付きで
+#   追加し、ローカルビルドに openssl + pkg-config が要る (cmake は不要)。
+# - nvim-rs: LGPL-3.0 なので crate 限定の例外が要る。futures の io-compat を必須で
+#   有効にするため tokio-io 0.1 (unmaintained / RUSTSEC-2026-0058) も必ず入る
+#   (上流に修正が無く安全なアップグレードも無い)。
 
 [advisories]
-# 無視するアドバイザリを追加する場合は理由とセットで書く
 ignore = [
   # nvim-rs を戻すときに必要:
   # { id = "RUSTSEC-2026-0058", reason = "nvim-rs の必須依存 (futures io-compat) 経由。安全なアップグレードが存在しない" },
 ]
 
 [bans]
-# 同一クレートの複数バージョン混入は警告に留める
 multiple-versions = "warn"
-# Cargo.toml のワイルドカードバージョン指定 ("*") は禁止
 wildcards = "deny"
-# バージョン重複時に出力する dot グラフのハイライト方法
 highlight = "all"
 
 [licenses]
-# ライセンス本文から SPDX を判定するときの信頼度
 confidence-threshold = 0.8
-# allow に挙げたライセンスが 1 つも使われていなくても警告しない
-# (allow リストを常に最新に保ちたければ "warn" に戻す)
 unused-allowed-license = "allow"
-# 許可するライセンス (SPDX 識別子)
 allow = [
   "MIT",
   "Apache-2.0",
@@ -47,18 +30,15 @@ allow = [
   "Unicode-3.0",
   "Zlib",
 ]
-# LGPL-3.0 のようなコピーレフトは許可リストに入れず、特定のクレートだけを
-# 例外にする方針 (nvim-rs を戻すときは下の 1 行を有効にする)。
+# コピーレフトは許可リストに入れず、特定のクレートだけ例外にする
 exceptions = [
   # { allow = ["LGPL-3.0"], name = "nvim-rs", version = "*" },
 ]
 
 [licenses.private]
-# publish = false の workspace クレートはライセンス未記載でも許可する
-# 外部公開するときは publish = false を外し、license フィールドと LICENSE を用意する
+# publish = false のクレートはライセンス未記載を許す
 ignore = true
 
-# 依存クレートの取得元を制限する
 [sources]
 unknown-registry = "deny"
 unknown-git = "deny"

@@ -3,13 +3,8 @@ name = "rig"
 version = "0.1.0"
 edition.workspace = true
 rust-version.workspace = true
-# 誤って crates.io へ publish しないためのフタ (deny.toml の [licenses.private] は
-# publish = false のクレートをライセンス未記載でも許可する)
+# 誤って publish しないためのフタ (deny の private 扱いにも必要)
 publish = false
-
-# 依存は実装で必要になった時点で追加する (ルート Cargo.toml の
-# [workspace.dependencies] に書いて .workspace = true で参照する)
-[dependencies]
 
 [lints]
 workspace = true

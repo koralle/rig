@@ -16,8 +16,7 @@ permissions:
   contents: read
 
 jobs:
-  # 変更されたファイルに応じて後続のジョブを実行するか判定する。
-  # ドキュメントのみの変更で Rust の lint / test が走らないようにするのが目的。
+  # ドキュメントのみの変更で Rust のジョブを走らせないため、変更ファイルを判定する
   changes:
     runs-on: ubuntu-24.04
     permissions:
@@ -29,12 +28,10 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      # dorny/paths-filter v4.0.3
-      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         id: filter
         with:
           filters: |
-            # Rust のビルド / lint / test に影響するファイル
             rust:
               - 'crates/**'
               - 'Cargo.toml'
@@ -42,7 +39,6 @@ jobs:
               - 'rust-toolchain.toml'
               - '.github/actions/**'
               - '.github/workflows/ci.yaml'
-            # 依存クレートのポリシーチェック (cargo-deny) に影響するファイル
             deps:
               - 'Cargo.toml'
               - 'Cargo.lock'
@@ -86,8 +82,7 @@ jobs:
         with:
           cache: false
 
-      # taiki-e/install-action v2.87.12
-      - uses: taiki-e/install-action@3f74d7c16a4242f1c95561e98edc25d36adb4375
+      - uses: taiki-e/install-action@3f74d7c16a4242f1c95561e98edc25d36adb4375 # v2.87.12
         with:
           tool: cargo-deny@0.20.2
 
@@ -104,8 +99,7 @@ jobs:
         with:
           cache: false
 
-      # taiki-e/install-action v2.87.12
-      - uses: taiki-e/install-action@3f74d7c16a4242f1c95561e98edc25d36adb4375
+      - uses: taiki-e/install-action@3f74d7c16a4242f1c95561e98edc25d36adb4375 # v2.87.12
         with:
           tool: cargo-machete@0.9.2
 
@@ -120,13 +114,11 @@ jobs:
 
       - uses: ./.github/actions/setup-rust-toolchain
 
-      # taiki-e/install-action v2.87.12
-      - uses: taiki-e/install-action@3f74d7c16a4242f1c95561e98edc25d36adb4375
+      - uses: taiki-e/install-action@3f74d7c16a4242f1c95561e98edc25d36adb4375 # v2.87.12
         with:
           tool: nextest@0.9.144
 
       # テストが 0 件の間は nextest が exit 4 で落ちるため pass 扱いにする
-      # (mise.toml の test タスクと同じ)
       - run: cargo nextest run --workspace --all-features --no-tests=pass
 
       # nextest は doctest を実行しないため個別に実行する

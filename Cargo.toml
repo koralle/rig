@@ -7,9 +7,7 @@ default-members = ["crates/*"]
 edition = "2024"
 rust-version = "1.99"
 
-# 依存は実装で必要になった時点でここに追加する。
-# 追加したら cargo machete / cargo deny の設定も同時に見直す (deny.toml の
-# 冒頭コメントに、戻すと引っかかる既知の項目をまとめてある)。
+# 依存は必要になった時点でここに追加する (追加時は deny.toml 冒頭の注意を確認)
 [workspace.dependencies]
 
 [workspace.lints.rust]
