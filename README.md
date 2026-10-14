@@ -2,8 +2,9 @@
 
 git の操作を Neovim から扱うための CLI (Rust / 開発中)。
 
-実装はこれから。ソースは `crates/rig` の骨組み (`main.rs` / `lib.rs`) だけで、
-依存もまだ 1 つも無い。CLI のサブコマンドや追加のクレートは必要になった
+実装はこれから。`crates/rig` は CLI の骨組み (`main.rs` / `lib.rs`) だけで、まだ
+依存が無い。`crates/rig-gpui` は GPUI Kit で最小のウィンドウを出す GUI の起点で、
+こちらは gpui-kit に依存する。CLI のサブコマンドや追加のクレートは必要になった
 時点で足す。
 
 ## 開発
@@ -18,6 +19,10 @@ git の操作を Neovim から扱うための CLI (Rust / 開発中)。
 - native のビルド依存は不要 (`git2` 0.21 の default features は空なので、libgit2 を
   同梱ソースから `cc` でビルドする)。`https` / `ssh` を有効にすると openssl と
   libssh2 (pkg-config) が要るため、有効化するときは CI にも導入が必要
+- `rig-gpui` (GUI) は gpui-kit 経由で GPUI を使うため、Linux では X11 / Wayland /
+  fontconfig / xkbcommon の開発パッケージが要る (CI は
+  `.github/actions/install-linux-deps` で導入する)。macOS は Xcode Command Line
+  Tools、Windows は MSVC + CMake が要る
 - 改行コードは `.gitattributes` で LF に統一してある (Windows からの編集でも
   `cargo fmt --all -- --check` が差分を出さないため)
 
@@ -45,6 +50,22 @@ mise run setup   # ツール導入 (nextest / machete / deny / lefthook / action
 
 `Cargo.toml` の依存を変えたときは `cargo build` などで `Cargo.lock` を更新してから
 コミットする (各タスクは `--locked` 付きで走るため、lock が古いと失敗する)。
+
+### GUI (`crates/rig-gpui`)
+
+GPUI (Zed の UI フレームワーク) を [GPUI Kit](https://gpui-kit.com/) 経由で使う。
+GPUI 本体は gpui-kit が `gpui-pre-*` のスナップショットとして固定して `gpui_kit::*`
+から再エクスポートするため、依存は gpui-kit だけにしてある (gpui を別途入れると
+GPUI が二重に入る)。
+
+```sh
+cargo run -p rig-gpui   # ウィンドウを開く (既定のビルド対象は CLI なので -p が要る)
+```
+
+ウィンドウを出すには X11 / Wayland または macOS / Windows のデスクトップセッションが
+要る (ヘッドレスでは起動しない)。画面なしで見るのは headless な smoke test
+(`cargo nextest run -p rig-gpui`) で、起動 → 描画 → ボタン押下 → 状態変化までを
+テスト用プラットフォーム上で確認する。
 
 ## ガードレール
 
@@ -80,7 +101,10 @@ mise run setup   # ツール導入 (nextest / machete / deny / lefthook / action
 - **依存ポリシー**: 依存は実装で必要になった時点でルート `Cargo.toml` の
   `[workspace.dependencies]` に追加する。追加したら `deny.toml` の冒頭にある
   既知の注意 (git2 / nvim-rs) を確認し、machete の除外や deny の例外を使う
-  場合は理由をコメントに書いて最小限に保ち、解消したら消す。
+  場合は理由をコメントに書いて最小限に保ち、解消したら消す。gpui-kit (GUI) を
+  入れた時点で `deny.toml` が大きくなっている (build script の許可リスト /
+  重複バージョンの skip / MPL-2.0 のクレート例外 / 上流由来の advisory)。
+  どれも理由コメント付きで、解消したら消す。
 
 ## ライセンス
 

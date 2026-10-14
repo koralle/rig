@@ -13,21 +13,129 @@
 # 既定値のままだと warn で CI が落ちないため、明示的に締める:
 # - yanked: 既定 warn。yank は取り下げ・差し替えの合図なのでエラーにする
 # - unsound: 既定 workspace (直接依存のみ)。transitive の未定義動作も踏むため all
+# - unmaintained: 既定 all。transitive のメンテ終了も把握するため明示的に all のままにする
 # - unused-ignored-advisory: 遭遇しなくなった ignore を残さない (解消したら消す運用の機械化)
 # なお 0.20.2 の ignore entry は id / reason のみで、expiry による期限切れ検知は未実装。
 # 期限は reason に書いて人間が再確認する
 yanked = "deny"
 unsound = "all"
+unmaintained = "all"
 unused-ignored-advisory = "deny"
 ignore = [
   # nvim-rs を戻すときに必要 (reason に再確認の時期を書いて定期に見直す):
   # { id = "RUSTSEC-2026-0058", reason = "nvim-rs の必須依存 (futures io-compat) 経由。安全なアップグレードが存在しない (2026-10 時点、半年後に再確認)" },
+  # GUI (gpui-kit) の依存に上流由来の unmaintained が 5 件ある。どれも脆弱性 / unsound /
+  # yanked ではなく、上流が依存を差し替えるまでこちらでは直せない。gpui-kit を上げるときに
+  # 消せるか確認する (2026-10 時点、半年後に見直す)
+  { id = "RUSTSEC-2024-0384", reason = "gpui-component の依存 (instant)。上流が差し替えるまで直せない (2026-10 時点、半年後に再確認)" },
+  { id = "RUSTSEC-2024-0436", reason = "gpui-pre-apple / gpui-kit の依存 (paste)。上流が差し替えるまで直せない (2026-10 時点、半年後に再確認)" },
+  { id = "RUSTSEC-2025-0134", reason = "gpui-kit の依存 (rustls-pemfile)。上流が差し替えるまで直せない (2026-10 時点、半年後に再確認)" },
+  { id = "RUSTSEC-2026-0206", reason = "resvg -> gpui-component の依存 (rustybuzz)。上流が差し替えるまで直せない (2026-10 時点、半年後に再確認)" },
+  { id = "RUSTSEC-2026-0192", reason = "cosmic-text -> gpui-pre-wgpu の依存 (ttf-parser)。上流が差し替えるまで直せない (2026-10 時点、半年後に再確認)" },
 ]
 
 [bans]
 multiple-versions = "deny"
 wildcards = "deny"
 highlight = "all"
+
+# 重複バージョンの skip。GUI (gpui-kit) の依存ツリーは上流が版数を揃えていないため、
+# 2026-10 時点で 72 クレート / 98 バージョンが重複する (どれも直接依存では解消できない)。
+# バージョンまで書くのは、上流の更新で不要になった entry を cargo-deny が
+# 「unnecessary skip」として警告してくれるようにするため (解消したら消す)。
+# 新しい重複が出たら、それが上流由来かを確認してここに足す。
+skip = [
+  "base64@=0.22.1",
+  "bit-set@=0.9.1",
+  "bit-vec@=0.9.1",
+  "bitflags@=1.3.2",
+  "block-buffer@=0.10.4",
+  "convert_case@=0.10.0",
+  "core-foundation@=0.9.4",
+  "cpufeatures@=0.2.17",
+  "crypto-common@=0.1.7",
+  "digest@=0.10.7",
+  "dirs@=5.0.1",
+  "dirs-sys@=0.4.1",
+  "foldhash@=0.1.5",
+  "font-types@=0.11.3",
+  "getrandom@=0.2.17",
+  "getrandom@=0.3.4",
+  "gif@=0.13.3",
+  "hashbrown@=0.14.5",
+  "hashbrown@=0.15.5",
+  "hashbrown@=0.16.1",
+  "heck@=0.4.1",
+  "imagesize@=0.13.0",
+  "itertools@=0.11.0",
+  "itertools@=0.13.0",
+  "kurbo@=0.11.3",
+  "miniz_oxide@=0.8.9",
+  "objc2@=0.5.3",
+  "objc2-app-kit@=0.2.2",
+  "objc2-foundation@=0.2.2",
+  "phf@=0.11.3",
+  "phf_generator@=0.11.3",
+  "phf_shared@=0.11.3",
+  "png@=0.17.16",
+  "pollster@=0.2.5",
+  "quick-error@=1.2.3",
+  "r-efi@=5.3.0",
+  "rand@=0.8.8",
+  "rand@=0.9.5",
+  "rand_core@=0.6.4",
+  "rand_core@=0.9.5",
+  "read-fonts@=0.37.0",
+  "redox_users@=0.4.6",
+  "resvg@=0.45.1",
+  "roxmltree@=0.20.0",
+  "rustc-hash@=1.1.0",
+  "serde_spanned@=0.6.9",
+  "sha2@=0.10.9",
+  "skrifa@=0.40.0",
+  "spin@=0.9.9",
+  "svgtypes@=0.15.3",
+  "syn@=2.0.119",
+  "thiserror@=1.0.69",
+  "thiserror-impl@=1.0.69",
+  "toml@=0.8.23",
+  "toml_datetime@=0.6.11",
+  "toml_edit@=0.22.27",
+  "usvg@=0.45.1",
+  "windows@=0.58.0",
+  "windows-core@=0.58.0",
+  "windows-implement@=0.58.0",
+  "windows-interface@=0.58.0",
+  "windows-link@=0.1.3",
+  "windows-registry@=0.4.0",
+  "windows-result@=0.2.0",
+  "windows-result@=0.3.4",
+  "windows-strings@=0.1.0",
+  "windows-strings@=0.3.1",
+  "windows-sys@=0.48.0",
+  "windows-sys@=0.52.0",
+  "windows-sys@=0.60.2",
+  "windows-targets@=0.48.5",
+  "windows-targets@=0.52.6",
+  "windows_aarch64_gnullvm@=0.48.5",
+  "windows_aarch64_gnullvm@=0.52.6",
+  "windows_aarch64_msvc@=0.48.5",
+  "windows_aarch64_msvc@=0.52.6",
+  "windows_i686_gnu@=0.48.5",
+  "windows_i686_gnu@=0.52.6",
+  "windows_i686_gnullvm@=0.52.6",
+  "windows_i686_msvc@=0.48.5",
+  "windows_i686_msvc@=0.52.6",
+  "windows_x86_64_gnu@=0.48.5",
+  "windows_x86_64_gnu@=0.52.6",
+  "windows_x86_64_gnullvm@=0.48.5",
+  "windows_x86_64_gnullvm@=0.52.6",
+  "windows_x86_64_msvc@=0.48.5",
+  "windows_x86_64_msvc@=0.52.6",
+  "winnow@=0.7.15",
+  "zune-core@=0.4.12",
+  "zune-jpeg@=0.4.21",
+]
 
 # [workspace.dependencies] の運用を強制する:
 # - duplicates: member が workspace = true を使わず直接宣言したらエラー
@@ -38,9 +146,114 @@ unused = "deny"
 include-path-dependencies = true
 
 # build script / ネイティブ実行ファイルは明示的に許可したものだけ通す。
-# 依存を足して build script 持ちが入ったら、中身を確認してここに理由付きで追加する
+# GUI (gpui-kit) を入れた時点で 91 クレートに増えた。2026-10 に全部の build.rs を
+# 走査し、外部からのダウンロードや不審な実行が無いこと、実行する外部コマンドが
+# rustc / cc などのコンパイラ probe、pkg-config / xcrun / where.exe / nasm / git と
+# いったツール検出とバージョン取得、C / asm のコンパイルだけであることを確認した。
+# 主な内訳:
+# - probe 系 (serde / proc-macro2 / quote / libc / rustix など多数):
+#   rustc とターゲットの機能判定だけで、コードは生成しない
+# - ネイティブ系 (*-sys / ash / wgpu / ring / rustls / zed-font-kit):
+#   pkg-config や cc でネイティブライブラリを検出・コンパイルしてリンクする
+# - windows 系 (windows_* / winapi* / vswhom-sys / glutin_wgl_sys):
+#   同梱の import library (.lib / .a) を展開してリンクする
+# - 生成系 (gpui-kit-assets / gpui-pre-* / khronos_api / pulp):
+#   OUT_DIR にコードやアセットを生成する (外部からの取得はしない)
+# 追加するときは build.rs の中身を確認してから足す
 [bans.build]
-allow-build-scripts = []
+allow-build-scripts = [
+  "ahash",
+  "anyhow",
+  "ash",
+  "async-io",
+  "cbindgen",
+  "crc32fast",
+  "crossbeam-deque",
+  "crossbeam-epoch",
+  "crossbeam-utils",
+  "crunchy",
+  "encoding_rs",
+  "freetype-sys",
+  "generic-array",
+  "getrandom",
+  "glutin_wgl_sys",
+  "gpui-component",
+  "gpui-kit-assets",
+  "gpui-pre",
+  "gpui-pre-apple",
+  "gpui-pre-windows",
+  "gpui-pre-ztracing",
+  "heapless",
+  "html5ever",
+  "httparse",
+  "iana-time-zone-haiku",
+  "icu_normalizer_data",
+  "icu_properties_data",
+  "inotify-sys",
+  "jni-sys",
+  "khronos-egl",
+  "khronos_api",
+  "libc",
+  "libm",
+  "mac-notification-sys",
+  "markup5ever",
+  "memoffset",
+  "mime_guess",
+  "naga",
+  "num-bigint-dig",
+  "num-traits",
+  "objc-sys",
+  "objc2",
+  "object",
+  "parking_lot_core",
+  "paste",
+  "pathfinder_simd",
+  "portable-atomic",
+  "portable-atomic-util",
+  "proc-macro2",
+  "pulp",
+  "quote",
+  "rayon-core",
+  "ref-cast",
+  "ring",
+  "rust-i18n",
+  "rustix",
+  "rustls",
+  "rustversion",
+  "serde",
+  "serde_core",
+  "serde_json",
+  "slotmap",
+  "system-configuration-sys",
+  "thiserror",
+  "tiny-keccak",
+  "vswhom-sys",
+  "wasm-bindgen",
+  "wasm-bindgen-shared",
+  "wayland-backend",
+  "wayland-client",
+  "wayland-sys",
+  "wgpu",
+  "wgpu-core",
+  "wgpu-hal",
+  "winapi",
+  "winapi-i686-pc-windows-gnu",
+  "winapi-x86_64-pc-windows-gnu",
+  "windows_aarch64_gnullvm",
+  "windows_aarch64_msvc",
+  "windows_i686_gnu",
+  "windows_i686_gnullvm",
+  "windows_i686_msvc",
+  "windows_x86_64_gnu",
+  "windows_x86_64_gnullvm",
+  "windows_x86_64_msvc",
+  "wit-bindgen",
+  "xim-parser",
+  "yeslogic-fontconfig-sys",
+  "zed-font-kit",
+  "zerocopy",
+  "zmij",
+]
 executables = "deny"
 
 # git2 の https / ssh を有効にすると openssl と libssh2 (native 依存) が要るため封じる
@@ -54,11 +267,15 @@ confidence-threshold = 0.8
 # warn にすると依存ゼロの今は毎回 8 件の警告が出て出力を読まなくなるため allow のまま
 unused-allowed-license = "allow"
 allow = [
+  # 0BSD (BSD Zero Clause) と CC0-1.0 (パブリックドメイン相当) はどちらもコピーレフトでは
+  # ないため許可する (gpui-kit の依存の enum-iterator / notify / tiny-keccak などが使う)
+  "0BSD",
   "MIT",
   "Apache-2.0",
   "Apache-2.0 WITH LLVM-exception",
   "BSD-2-Clause",
   "BSD-3-Clause",
+  "CC0-1.0",
   "ISC",
   "Unicode-3.0",
   "Zlib",
@@ -67,6 +284,14 @@ allow = [
 # (0.20 の公式キーは crate。name も受理されるが使わない)
 exceptions = [
   # { allow = ["LGPL-3.0"], crate = "nvim-rs", version = "*" },
+  # MPL-2.0 はファイル単位の弱いコピーレフトで、他コードとリンクしても依存側へ
+  # ライセンスを伝播させない (MPL-2.0 §3.3)。gpui-kit の依存では次の 3 件だけが
+  # MPL-2.0 なので、許可リストには入れずクレート限定で許容する。
+  # cbindgen: macOS 向け gpui-pre-apple のビルド時のみ
+  # dwrote: Windows のフォント描画 (zed-font-kit 経由)、option-ext: dirs-sys 経由
+  { allow = ["MPL-2.0"], crate = "cbindgen" },
+  { allow = ["MPL-2.0"], crate = "dwrote" },
+  { allow = ["MPL-2.0"], crate = "option-ext" },
 ]
 
 [licenses.private]

@@ -70,6 +70,8 @@ jobs:
         with:
           cache: false
 
+      - uses: ./.github/actions/install-linux-deps
+
       - run: cargo fmt --all -- --check
 
   clippy:
@@ -83,6 +85,9 @@ jobs:
           persist-credentials: false
 
       - uses: ./.github/actions/setup-rust-toolchain
+
+      # gpui-kit (GUI) が pkg-config で要求する Linux の開発パッケージを入れる
+      - uses: ./.github/actions/install-linux-deps
 
       # --locked: Cargo.lock が更新されていない状態で CI が lock を書き換えて
       # 成功してしまうのを防ぐ
@@ -100,6 +105,8 @@ jobs:
           persist-credentials: false
 
       - uses: ./.github/actions/setup-rust-toolchain
+
+      - uses: ./.github/actions/install-linux-deps
 
       # 壊れた intra-doc link などは cargo test --doc では検出されないため、
       # rustdoc 自体を回して警告をエラーにする
@@ -193,6 +200,8 @@ jobs:
       - uses: taiki-e/install-action@3f74d7c16a4242f1c95561e98edc25d36adb4375 # v2.87.12
         with:
           tool: nextest@0.9.144
+
+      - uses: ./.github/actions/install-linux-deps
 
       # テストが 0 件の間は nextest が exit 4 で落ちるため pass 扱いにする
       # (プロファイルは .config/nextest.toml: fail-fast なし / リトライ / ハング検出)
